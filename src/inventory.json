@@ -1,0 +1,15 @@
+{
+    "electronics": {
+        "laptop": {"stock": 15, "price": 999.99},
+        "smartphone": {"stock": 42, "price": 799.00},
+        "tablet": {"stock": 0, "price": 450.00},
+        "smartwatch": {"stock": 30, "price": 250.00}
+    },
+    "accessories": {
+        "mouse": {"stock": 120, "price": 25.50},
+        "keyboard": {"stock": 85, "price": 45.00},
+        "monitor": {"stock": 8, "price": 300.00},
+        "headphones": {"stock": 25, "price": 150.00},
+        "charger": {"stock": 200, "price": 15.00}
+    }
+}

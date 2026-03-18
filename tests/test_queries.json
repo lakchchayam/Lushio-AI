@@ -1,0 +1,162 @@
+[
+  {
+    "id": 1,
+    "query": "Do you have laptops in stock?",
+    "expected_products": ["laptop"],
+    "expected_found": true,
+    "expected_stock_gt_zero": [true],
+    "notes": "Single item, should return laptop with stock=15"
+  },
+  {
+    "id": 2,
+    "query": "What is the price of a smartphone?",
+    "expected_products": ["smartphone"],
+    "expected_found": true,
+    "expected_stock_gt_zero": [true],
+    "notes": "Single item, price should be 799.00"
+  },
+  {
+    "id": 3,
+    "query": "Is the tablet available?",
+    "expected_products": ["tablet"],
+    "expected_found": true,
+    "expected_stock_gt_zero": [false],
+    "notes": "Tablet exists but stock=0, so out of stock"
+  },
+  {
+    "id": 4,
+    "query": "How many smartwatches do you have?",
+    "expected_products": ["smartwatch"],
+    "expected_found": true,
+    "expected_stock_gt_zero": [true],
+    "notes": "Should return stock=30"
+  },
+  {
+    "id": 5,
+    "query": "Do you have laptops and chargers?",
+    "expected_products": ["laptop", "charger"],
+    "expected_found": true,
+    "expected_stock_gt_zero": [true, true],
+    "notes": "Multi-item query, both in stock"
+  },
+  {
+    "id": 6,
+    "query": "What accessories do you sell? Show me mouse and keyboard.",
+    "expected_products": ["mouse", "keyboard"],
+    "expected_found": true,
+    "expected_stock_gt_zero": [true, true],
+    "notes": "Multi-item from accessories category"
+  },
+  {
+    "id": 7,
+    "query": "Do you have monitors and headphones?",
+    "expected_products": ["monitor", "headphones"],
+    "expected_found": true,
+    "expected_stock_gt_zero": [true, true],
+    "notes": "Both in stock"
+  },
+  {
+    "id": 8,
+    "query": "What is the price of a laptop and a monitor?",
+    "expected_products": ["laptop", "monitor"],
+    "expected_found": true,
+    "expected_stock_gt_zero": [true, true],
+    "notes": "Cross-category: electronics + accessories"
+  },
+  {
+    "id": 9,
+    "query": "Do you sell cameras?",
+    "expected_products": ["camera"],
+    "expected_found": false,
+    "expected_stock_gt_zero": [false],
+    "notes": "Product NOT in inventory, should return not_found"
+  },
+  {
+    "id": 10,
+    "query": "Do you have a printer?",
+    "expected_products": ["printer"],
+    "expected_found": false,
+    "expected_stock_gt_zero": [false],
+    "notes": "Product NOT in inventory"
+  },
+  {
+    "id": 11,
+    "query": "Show me everything you have in electronics.",
+    "expected_products": ["laptop", "smartphone", "tablet", "smartwatch"],
+    "expected_found": true,
+    "expected_stock_gt_zero": [true, true, false, true],
+    "notes": "Broad category query, should return all 4 electronics"
+  },
+  {
+    "id": 12,
+    "query": "I need a charger. How much does it cost and is it in stock?",
+    "expected_products": ["charger"],
+    "expected_found": true,
+    "expected_stock_gt_zero": [true],
+    "notes": "Single item, stock=200, price=15.00"
+  },
+  {
+    "id": 13,
+    "query": "Do you have tablets and smartwatches? What are their prices?",
+    "expected_products": ["tablet", "smartwatch"],
+    "expected_found": true,
+    "expected_stock_gt_zero": [false, true],
+    "notes": "One out of stock (tablet), one in stock (smartwatch)"
+  },
+  {
+    "id": 14,
+    "query": "I want to buy a mouse. Is it available?",
+    "expected_products": ["mouse"],
+    "expected_found": true,
+    "expected_stock_gt_zero": [true],
+    "notes": "Single item, stock=120"
+  },
+  {
+    "id": 15,
+    "query": "Do you have laptops, headphones, and keyboards available?",
+    "expected_products": ["laptop", "headphones", "keyboard"],
+    "expected_found": true,
+    "expected_stock_gt_zero": [true, true, true],
+    "notes": "Triple-item query, all in stock"
+  },
+  {
+    "id": 16,
+    "query": "What is your return policy?",
+    "expected_products": [],
+    "expected_found": true,
+    "expected_stock_gt_zero": [],
+    "notes": "RAG only: should mention 30 days and 15% restocking fee"
+  },
+  {
+    "id": 17,
+    "query": "How much is expedited shipping?",
+    "expected_products": [],
+    "expected_found": true,
+    "expected_stock_gt_zero": [],
+    "notes": "RAG only: should mention $15 flat rate"
+  },
+  {
+    "id": 18,
+    "query": "Do you have any physical stores?",
+    "expected_products": [],
+    "expected_found": true,
+    "expected_stock_gt_zero": [],
+    "notes": "RAG only: should mention online exclusively"
+  },
+  {
+    "id": 19,
+    "query": "I need a smartwatch. Can I pay with PayPal?",
+    "expected_products": ["smartwatch"],
+    "expected_found": true,
+    "expected_stock_gt_zero": [true],
+    "notes": "Hybrid: should check stock and confirm PayPal support"
+  },
+  {
+    "id": 20,
+    "query": "Do you have laptops and what is the warranty?",
+    "expected_products": ["laptop"],
+    "expected_found": true,
+    "expected_stock_gt_zero": [true],
+    "notes": "Hybrid: should check laptop stock and mention 1-year warranty"
+  }
+]

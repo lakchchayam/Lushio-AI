@@ -1,0 +1,511 @@
+\documentclass[12pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage{amsmath}
+\usepackage{array}
+\usepackage{booktabs}
+\setlength{\headheight}{15pt}
+
+% --- Colors ---
+\definecolor{accent}{HTML}{7C3AED}
+\definecolor{lightbg}{HTML}{EDE9FE}
+\definecolor{codebg}{HTML}{1E1E2E}
+
+% --- Problem Box: uses only built-in colorbox+fbox ---
+\newcommand{\problembox}[2]{%
+  \vspace{6pt}%
+  \noindent\colorbox{lightbg}{\parbox{\dimexpr\linewidth-2\fboxsep}{%
+    \textbf{\textcolor{accent}{[Problem]} #1}\\[4pt]%
+    #2%
+  }}\vspace{6pt}%
+}
+
+% --- Code Style ---
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    backgroundcolor=\color{codebg},
+    basicstyle=\ttfamily\footnotesize\color{white},
+    keywordstyle=\color{accent},
+    stringstyle=\color{green!70},
+    commentstyle=\color{gray!80},
+    breaklines=true,
+    frame=shadowbox,
+    rulesepcolor=\color{accent},
+    xleftmargin=10pt,
+    xrightmargin=10pt,
+    aboveskip=10pt,
+    belowskip=10pt,
+    tabsize=4,
+    showstringspaces=false,
+}
+
+% --- Header/Footer ---
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{\textcolor{accent}{Lushio AI -- Architecture Report}}
+\rfoot{Page \thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% --- Section Formatting ---
+\titleformat{\section}{\large\bfseries\color{accent}}{}{0em}{}[\color{accent}\titlerule]
+\titleformat{\subsection}{\normalsize\bfseries}{}{0em}{\textbullet\space}
+\titleformat{\subsubsection}{\small\bfseries\color{accent!80}}{}{0em}{\textgreater\space}
+
+\title{%
+  {\huge\textbf{Lushio AI}}\\[8pt]
+  {\Large System Design \& Architecture Report}\\[4pt]
+  {\normalsize A Comprehensive Technical Deep-Dive}
+}
+\author{Built with Antigravity AI}
+\date{March 2026}
+
+\begin{document}
+
+\maketitle
+\vspace{1em}
+\hrule
+\vspace{0.5em}
+\noindent\textbf{Summary:} Lushio AI is a multi-agent conversational assistant for e-commerce stores. It answers natural language questions about inventory and store policies using a LangGraph orchestration pipeline, an MCP tool server, a RAG system with Pinecone, and a modern Next.js frontend.
+\vspace{0.5em}
+\hrule
+\vspace{1em}
+
+\tableofcontents
+\newpage
+
+%% ============================================================
+\section{Executive Summary}
+%% ============================================================
+
+Lushio AI is a production-ready, multi-agent conversational system built for e-commerce stores. It allows customers to ask natural language questions about product availability, pricing, and store policies. The system uses a \textbf{LangGraph orchestration layer} to route requests between specialized AI agents, a \textbf{Model Context Protocol (MCP) server} as a standardized tool gateway, and a \textbf{Retrieval-Augmented Generation (RAG) pipeline} backed by Pinecone to answer policy questions accurately.
+
+The frontend is a \textbf{Next.js 14} application with glassmorphism design and Framer Motion animations, and the backend is a \textbf{FastAPI} server written in Python 3.12.
+
+%% ============================================================
+\section{Project Directory Structure}
+%% ============================================================
+
+\begin{lstlisting}[language=bash]
+project/
+|-- src/
+|   |-- agent.py         # Main backend: FastAPI + LangGraph
+|   |-- mcp_server.py    # MCP Tool Server (FastMCP)
+|   |-- tools.py         # Core tool implementations
+|   |-- ingest.py        # One-time RAG ingestion script
+|   |-- inventory.json   # Local product catalog (JSON)
+|-- lushio-ui/           # Next.js 14 Frontend
+|   |-- app/
+|   |   |-- layout.tsx   # Root layout (metadata, fonts)
+|   |   |-- page.tsx     # Main page (renders ChatInterface)
+|   |   |-- globals.css  # Premium dark theme CSS tokens
+|   |-- components/
+|   |   |-- ChatInterface.tsx  # Main conversational UI + state
+|   |   |-- MessageBubble.tsx  # Renders one user or AI turn
+|   |   |-- ProductCard.tsx    # Animated inventory card
+|   |   |-- TypingIndicator.tsx # AI thinking animation
+|-- docs/
+|   |-- faq.txt          # Store policies for RAG ingestion
+|   |-- architecture.tex # This document (LaTeX source)
+|-- requirements.txt     # Python dependencies
+|-- venv312/             # Python 3.12 virtual environment
+|-- .env                 # Secret API keys (not in git)
+\end{lstlisting}
+
+%% ============================================================
+\section{Backend Architecture (\texttt{src/agent.py})}
+%% ============================================================
+
+This is the core of the system. It runs the FastAPI web server, defines the LangGraph workflow, manages the MCP proxy, and exposes the \texttt{/ask} endpoint.
+
+\subsection{Technology Choices}
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{FastAPI:} Chosen for its native \texttt{async/await} support (critical for running async LLM and MCP calls), automatic Swagger docs at \texttt{/docs}, and Pydantic-based schema validation.
+    \item \textbf{LangGraph (StateGraph):} A graph-based orchestration framework. Defines AI agents as nodes and controls data flow between them with conditional edges. Far more powerful and inspectable than linear chains.
+    \item \textbf{Groq (llama-3.1-8b-instant):} The LLM backbone. Groq provides extremely fast inference (typically under 1s per call) via custom hardware (LPUs), keeping response latency low.
+    \item \textbf{CORS Middleware:} Added to allow the Next.js frontend (port 3000) to communicate with the FastAPI backend (port 8000) during local development without browser security errors.
+\end{itemize}
+
+\subsection{The Shared Agent State}
+
+The entire multi-agent pipeline communicates via a shared \textbf{TypedDict} object. Every node reads from and writes to this state. Nothing is passed directly between nodes.
+
+\begin{lstlisting}[language=Python]
+class AgentState(TypedDict):
+    query: str               # The original user question
+    supervisor_directive: str # Instruction from Supervisor to Researcher
+    inventory_items: List[Dict]  # Products found from MCP tool calls
+    research_data: str       # Raw text notes accumulated by Researcher
+    research_iterations: int # Loop counter (capped at 2)
+    final_answer: Dict       # Final {message, products} dict for the API
+\end{lstlisting}
+
+\subsection{The LangGraph Workflow -- Node by Node}
+
+The compiled graph has 3 named nodes and one conditional routing function. The execution path is:
+
+\begin{center}
+\texttt{START} $\longrightarrow$ \texttt{supervisor} $\longrightarrow$ \texttt{research} $\overset{\text{evaluate}}{\longrightarrow}$ \texttt{writer} $\longrightarrow$ \texttt{END}
+\end{center}
+
+The \texttt{research} node can loop back to itself (up to 2 times) if the evaluator determines data is insufficient.
+
+\subsubsection{Node 1: supervisor\_node}
+
+\textbf{Role:} Analyzes the user's raw query and issues a precise, command-like directive to the Researcher.
+
+\textbf{Why it exists:} Separates the decision of \textit{what to look for} from the act of \textit{looking}. Without a supervisor, the Researcher would have to interpret vague user intent directly, leading to wrong tool selection.
+
+\textbf{Mechanism:} Sends the user query to Groq with a system prompt that lists available MCP tools and asks for a precise directive. The full LLM response becomes \texttt{supervisor\_directive} in the state.
+
+\textbf{Example output:}
+\begin{lstlisting}
+"Use mcp_inventory_lookup to check stock for 'laptop'.
+Also use mcp_policy_search to find the laptop return policy."
+\end{lstlisting}
+
+\subsubsection{Node 2: research\_node}
+
+\textbf{Role:} Executes the supervisor's directive by calling MCP tools and collecting raw data.
+
+\textbf{Mechanism:} Calls \texttt{llm.bind\_tools()} to give the LLM the MCP tool schemas (JSON schema format). The LLM then decides which tool to call and with what arguments. The node manually dispatches each tool call via \texttt{await mcp\_inventory\_lookup.ainvoke()} or \texttt{await mcp\_policy\_search.ainvoke()}.
+
+For inventory results, the item is appended to \texttt{inventory\_items} in state only if \texttt{status == "found"} (prevents duplicates and ghost entries). Text results from policy search are appended to \texttt{research\_data}.
+
+\subsubsection{Conditional Edge: evaluate\_research}
+
+\textbf{Role:} Quality gate between research iterations and the writer node.
+
+\textbf{Mechanism:} Sends the accumulated state to Groq with a strict system prompt to respond only with \texttt{"ENOUGH"} or \texttt{"MORE"}. If \texttt{"MORE"}, the graph loops back to \texttt{research}. If \texttt{"ENOUGH"} or if \texttt{research\_iterations >= 2} (hard cap), routes to \texttt{writer}.
+
+\subsubsection{Node 3: writer\_node}
+
+\textbf{Role:} Synthesizes all collected data into a friendly, human-readable response.
+
+\textbf{Mechanism:} Takes \texttt{inventory\_items} and \texttt{research\_data} from state and sends them to Groq with a writer system prompt. Critically, the \texttt{products} list in the final response is built \textbf{programmatically from state} -- not from the LLM output -- to completely prevent product hallucination.
+
+\subsection{The In-Memory Query Cache}
+
+\begin{lstlisting}[language=Python]
+QUERY_CACHE = {}  # Simple dict: normalized_query -> response_data
+
+# On each /ask request:
+normalized_query = request.query.strip().lower()
+if normalized_query in QUERY_CACHE:
+    return cached_response  # Skip entire LangGraph pipeline
+\end{lstlisting}
+
+On a cache hit, the response is returned in under 100ms. In production, Redis with a TTL would replace this.
+
+\subsection{The /ask API Endpoint}
+
+\begin{lstlisting}[language=Python]
+# POST /ask
+# Request body:
+{ "query": "how much is a laptop and what's the return policy?" }
+
+# Response:
+{
+  "query": "how much is a laptop...",
+  "items_found": [{"name": "laptop", "stock": 15, "price": 999.99}],
+  "final_answer": {
+    "message": "Laptop is in stock with 15 units at $999.99...",
+    "products": [{"name": "laptop", "stock": 15, "price": 999.99}]
+  },
+  "execution_time_seconds": 3.07
+}
+\end{lstlisting}
+
+%% ============================================================
+\section{MCP Tool Server (\texttt{src/mcp\_server.py})}
+%% ============================================================
+
+\subsection{What is MCP and Why We Used It}
+
+The \textbf{Model Context Protocol (MCP)} is an open standard for connecting AI systems to external tools via a subprocess + stdio interface. Instead of the agent calling tools as plain Python functions (tight coupling), it communicates with a dedicated MCP server process. This is the AI equivalent of a microservices architecture.
+
+\textbf{Benefits we get:}
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Decoupling:} Tool logic lives in its own process. Updating the inventory source requires no changes to \texttt{agent.py}.
+    \item \textbf{Replaceability:} The database behind a tool can be swapped (e.g., JSON $\to$ PostgreSQL) without changing the agent.
+    \item \textbf{Standardization:} Any MCP-compatible AI client can connect to this server (Claude, OpenAI tools, etc.).
+\end{itemize}
+
+\subsection{Tools Exposed by the MCP Server}
+
+The server is created with \textbf{FastMCP} and registers exactly two tools:
+
+\begin{lstlisting}[language=Python]
+@mcp.tool()
+def inventory_lookup(product_name: str) -> str:
+    """Check stock and price for a specific product."""
+    result = check_inventory.invoke(product_name)
+    return str(result)  # Returns string representation of dict
+
+@mcp.tool()
+def policy_search(query: str) -> str:
+    """Search the store's FAQ and policies."""
+    result = search_documents.invoke(query)
+    return result  # Returns relevant text chunks
+\end{lstlisting}
+
+\subsection{MCP Client Proxy in agent.py}
+
+The \texttt{MCPToolProxy} class connects to the MCP server. On each tool call it:
+\begin{enumerate}[leftmargin=1.5em]
+    \item Spawns \texttt{mcp\_server.py} as a subprocess using the same Python executable.
+    \item Opens an stdio channel with the \texttt{mcp} SDK's \texttt{stdio\_client}.
+    \item Initializes a \texttt{ClientSession} and calls \texttt{session.call\_tool(tool\_name, args)}.
+    \item Returns the first text content item from the MCP response.
+    \item Handles all errors gracefully, logging them without crashing the pipeline.
+\end{enumerate}
+
+%% ============================================================
+\section{Core Tool Implementations (\texttt{src/tools.py})}
+%% ============================================================
+
+\subsection{Tool 1: check\_inventory(product\_name: str)}
+
+\textbf{Data source:} \texttt{src/inventory.json} -- a flat JSON file loaded on every call.
+
+\textbf{Matching logic:} Case-insensitive substring matching. Both \texttt{product\_lower in item\_name} and \texttt{item\_name in product\_lower} are checked. This handles partial queries ("lap" finds "laptop") and full queries ("laptop" finds "laptop").
+
+\textbf{Return format:}
+\begin{lstlisting}[language=Python]
+# Found:     {"name": "laptop", "stock": 15, "price": 999.99, "status": "found"}
+# Not found: {"name": "bra",    "stock": 0,  "price": 0.0,   "status": "not_found"}
+\end{lstlisting}
+
+\subsection{Tool 2: search\_documents(query: str)}
+
+\textbf{Data source:} Pinecone serverless vector database (index: \texttt{lushio-rag}).
+
+\textbf{Embedding model:} \textbf{all-MiniLM-L6-v2} via HuggingFace Sentence Transformers. Runs locally (no API cost), produces 384-dimensional vectors, downloads the model on first use.
+
+\textbf{How it works:} The query is embedded into a 384-dimensional vector. Pinecone performs cosine similarity search and returns the top-3 most semantically relevant document chunks from the FAQ.
+
+\subsection{The Inventory Catalog (\texttt{src/inventory.json})}
+
+\begin{table}[h!]
+\centering
+\begin{tabular}{llrr}
+\toprule
+\textbf{Category} & \textbf{Product} & \textbf{Stock} & \textbf{Price (USD)} \\
+\midrule
+Electronics & Laptop & 15 & \$999.99 \\
+Electronics & Smartphone & 42 & \$799.00 \\
+Electronics & Tablet & 0 (out) & \$450.00 \\
+Electronics & Smartwatch & 30 & \$250.00 \\
+Accessories & Mouse & 120 & \$25.50 \\
+Accessories & Keyboard & 85 & \$45.00 \\
+Accessories & Monitor & 8 & \$300.00 \\
+Accessories & Headphones & 25 & \$150.00 \\
+Accessories & Charger & 200 & \$15.00 \\
+\bottomrule
+\end{tabular}
+\caption{Full inventory catalog from \texttt{inventory.json}}
+\end{table}
+
+%% ============================================================
+\section{RAG Data Ingestion Pipeline (\texttt{src/ingest.py})}
+%% ============================================================
+
+This one-time setup script populates the Pinecone vector database with store documentation. It is not run during normal operation.
+
+\subsection{Pipeline Steps}
+\begin{enumerate}[leftmargin=1.5em]
+    \item \textbf{Load:} \texttt{TextLoader} reads \texttt{docs/faq.txt} (the store's policies and FAQ document).
+    \item \textbf{Split:} \texttt{RecursiveCharacterTextSplitter} chunks the document into 400-character pieces with 50-character overlaps. Overlap ensures that context is not lost at chunk boundaries.
+    \item \textbf{Embed:} Each chunk is embedded via \texttt{all-MiniLM-L6-v2} into a 384-dimensional vector.
+    \item \textbf{Upload:} All embedded chunks are uploaded to a Pinecone Serverless index on AWS us-east-1 using cosine similarity metric. The index is auto-created if it doesn't exist, with the script polling until the index transition to READY state.
+\end{enumerate}
+
+\subsection{Key Configuration}
+\begin{lstlisting}[language=Python]
+PINECONE_INDEX_NAME = "lushio-rag"
+EMBEDDING_DIMENSIONS = 384       # all-MiniLM-L6-v2 output size
+CHUNK_SIZE = 400                 # characters per chunk
+CHUNK_OVERLAP = 50               # character overlap between chunks
+SIMILARITY_METRIC = "cosine"     # Pinecone distance metric
+CLOUD = "aws", REGION = "us-east-1"  # Pinecone serverless config
+\end{lstlisting}
+
+%% ============================================================
+\section{Frontend Architecture (\texttt{lushio-ui/})}
+%% ============================================================
+
+\subsection{Technology Choices}
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{Next.js 14 (App Router):} Provides a component-first architecture, great DX with hot reloading, TypeScript first-class support, and performance optimizations out of the box.
+    \item \textbf{TypeScript:} Ensures type safety for API response shapes and component props, catching errors at compile time.
+    \item \textbf{Framer Motion:} Production-ready animation library for React. Used for enter/exit transitions (\texttt{AnimatePresence}), hover effects on cards, and the typing indicator animation.
+    \item \textbf{Lucide React:} Clean, consistent icon set (Sparkles, Send, Bot icons).
+    \item \textbf{Vanilla CSS:} Used instead of Tailwind to have full control over the glassmorphism design system defined once in \texttt{globals.css}.
+\end{itemize}
+
+\subsection{Design System Tokens (\texttt{app/globals.css})}
+
+\begin{lstlisting}[language=CSS]
+:root {
+  --background: #060608;           /* Near-black page background */
+  --accent: #7c3aed;                /* Lushio branded purple */
+  --accent-glow: rgba(124,58,237,0.4); /* For button box-shadows */
+  --glass-bg: rgba(255,255,255,0.04);  /* Glassmorphism tint */
+  --glass-border: rgba(255,255,255,0.08); /* Subtle glass border */
+  --glass-blur: blur(16px);         /* backdrop-filter strength */
+  --success: #10b981;               /* Green for "in stock" badge */
+  --muted: #8b8b93;                 /* Secondary text color */
+  --card-shadow: 0 8px 32px rgba(0,0,0,0.8); /* Card depth */
+}
+
+body {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(124,58,237,0.1), transparent 40%),
+    radial-gradient(circle at 100% 100%, rgba(124,58,237,0.05), transparent 40%),
+    #060608;  /* Subtle purple spotlight corners */
+}
+\end{lstlisting}
+
+\subsection{Component Breakdown}
+
+\subsubsection{ChatInterface.tsx -- The Brain of the UI}
+
+\textbf{State managed:}
+\begin{lstlisting}[language=JSX]
+const [messages, setMessages] = useState<Message[]>([welcome]);
+const [input, setInput] = useState("");       // Text field value
+const [isLoading, setIsLoading] = useState(false); // Show typing dots
+\end{lstlisting}
+
+\textbf{Request flow:} On submit, user message is added to state optimistically. Then \texttt{fetch("http://localhost:8000/ask")} is called. On success, the AI message is added with product data embedded. On network error, a graceful error message is shown.
+
+\textbf{Auto-scroll:} A \texttt{useEffect} watches the \texttt{messages} and \texttt{isLoading} state and scrolls the chat viewport to the bottom via a \texttt{ref} on every new message.
+
+\textbf{Layout:} Fixed header (glass nav), scrollable message list, fixed bottom input bar.
+
+\subsubsection{MessageBubble.tsx}
+
+Renders a single conversation turn. User messages are accent-colored (\texttt{var(--accent)}), right-aligned, with a \texttt{border-radius: 20px 20px 4px 20px} tail. AI messages use glassmorphism, left-aligned, with a \texttt{20px 20px 20px 4px} tail. Both animate in with \texttt{motion.div} (user: slide from right, AI: slide from left). If the AI message has \texttt{products}, they are rendered as \texttt{ProductCard} components below the text bubble. Execution time is shown as a small footer.
+
+\subsubsection{ProductCard.tsx}
+
+An animated card for a single inventory item. Uses \texttt{whileHover: \{ y: -4, scale: 1.02 \}} for a subtle lift effect. Shows:
+\begin{itemize}[leftmargin=1.5em]
+    \item Product name (bold)
+    \item Price (muted text)
+    \item Stock badge: green "N in stock" or red "Out of Stock" pill
+\end{itemize}
+
+\subsubsection{TypingIndicator.tsx}
+
+Three dots that bounce sequentially (150ms stagger delay) using Framer Motion's \texttt{animate: \{ y: ["0\%", "-50\%", "0\%"], opacity: [0.4, 1, 0.4] \}} with \texttt{repeat: Infinity}. Shown while \texttt{isLoading === true} and wrapped in \texttt{AnimatePresence} so it fades out smoothly when the response arrives.
+
+%% ============================================================
+\section{Problems Faced \& Solutions}
+%% ============================================================
+
+\problembox{Problem 1: Async Event Loop Conflict}{%
+FastAPI runs its own \texttt{asyncio} event loop. The older MCP client and LangGraph code used \texttt{asyncio.run()} internally, which cannot be called inside an already-running event loop. Every API request crashed with: \textit{"asyncio.run() cannot be called from a running event loop."} \\[4pt]
+\textbf{Fix:} Converted every LangGraph node (\texttt{supervisor\_node}, \texttt{research\_node}, \texttt{evaluate\_research}, \texttt{writer\_node}) to \texttt{async def} and replaced all \texttt{.invoke()} calls with \texttt{await .ainvoke()}. The final graph call became \texttt{await workflow\_app.ainvoke(initial\_state)}.%
+}
+
+\problembox{Problem 2: Tool Always Returning "Not Found"}{%
+The MCP server received tool arguments as a Python \texttt{dict} (\texttt{\{"product\_name": "laptop"\}}) instead of extracting the string value. The inventory matching logic then compared a dict against product name strings and always failed. \\[4pt]
+\textbf{Fix:} Changed the MCP server to call \texttt{check\_inventory.invoke(product\_name)} passing the direct string argument, not the whole args dict.%
+}
+
+\problembox{Problem 3: Missing Python Dependencies}{%
+The system was migrated to a new Python 3.12 virtual environment (\texttt{venv312}). Several required packages -- \texttt{fastmcp}, \texttt{sentence-transformers}, \texttt{torch}, \texttt{scikit-learn} -- were missing, causing \texttt{ModuleNotFoundError} crashes. \\[4pt]
+\textbf{Fix:} Installed all required packages:\vspace{2pt}\newline
+\texttt{pip install fastmcp sentence-transformers torch scikit-learn}.%
+}
+
+\problembox{Problem 4: Pinecone Library Version Mismatch}{%
+\texttt{langchain-pinecone} required \texttt{pinecone>=6.0.0}, but the installed \texttt{pinecone-client} package was a legacy version with an incompatible API (no \texttt{Pinecone()} constructor class). \\[4pt]
+\textbf{Fix:} Removed \texttt{pinecone-client} and installed the modern \texttt{pinecone} package which includes the correct constructor, asyncio support, and Serverless spec.%
+}
+
+\problembox{Problem 5: JavaScript Reference Error in TypingIndicator}{%
+Used \texttt{Short.MAX\_VALUE} (a Java integer constant) in Framer Motion's \texttt{repeat} property. JavaScript has no \texttt{Short} class, causing a \texttt{ReferenceError} that crashed the entire UI. \\[4pt]
+\textbf{Fix:} Replaced with \texttt{Infinity}, which is the correct JavaScript/Framer Motion value for infinite animation repetition.%
+}
+
+%% ============================================================
+\section{Complete System Data Flow}
+%% ============================================================
+
+The trace below describes a full lifecycle for the query \texttt{"laptop stock and return policy"}:
+
+\begin{lstlisting}
+User (Next.js, :3000) -> POST /ask {"query": "laptop stock and return policy"}
+  |
+  v
+FastAPI /ask (:8000) -- Cache MISS, proceed to LangGraph
+  |
+  v
+[1] supervisor_node
+    Groq LLM -> "Use mcp_inventory_lookup for 'laptop'
+                  AND mcp_policy_search for 'return policy'"
+    State: supervisor_directive = "..."
+  |
+  v
+[2] research_node
+    LLM selects tools: [mcp_inventory_lookup, mcp_policy_search]
+    |
+    +--> await mcp_inventory_lookup.ainvoke({"product_name": "laptop"})
+    |        MCPToolProxy: spawn mcp_server.py subprocess
+    |        stdio_client: open session -> session.call_tool(...)
+    |        mcp_server.py: inventory_lookup("laptop")
+    |        tools.py: check_inventory("laptop") -> inventory.json
+    |        Returns: {"name": "laptop", "stock": 15, "price": 999.99}
+    |
+    +--> await mcp_policy_search.ainvoke({"query": "return policy"})
+             MCPToolProxy: spawn mcp_server.py subprocess
+             stdio_client -> policy_search("return policy")
+             tools.py: search_documents() -> Pinecone cosine search
+             Returns: "30-day return window, 15% restocking fee..."
+    |
+    State: inventory_items=[{"name":"laptop"...}], research_data="30-day..."
+  |
+  v
+[3] evaluate_research
+    Groq LLM -> "ENOUGH"  (both items found and policy retrieved)
+    Routes to: writer
+  |
+  v
+[4] writer_node
+    Groq LLM: Compose friendly answer from inventory + research_data
+    State: final_answer = {
+      "message": "Laptop is in stock with 15 units at $999.99...",
+      "products": [{"name": "laptop", "stock": 15, "price": 999.99}]
+    }
+  |
+  v
+FastAPI: Return QueryResponse -> Save to QUERY_CACHE
+  |
+  v
+Next.js UI: MessageBubble renders text + ProductCard with animation
+\end{lstlisting}
+
+%% ============================================================
+\section{Security \& Production Considerations}
+%% ============================================================
+
+\begin{itemize}[leftmargin=1.5em]
+    \item \textbf{API Keys:} \texttt{GROQ\_API\_KEY} and \texttt{PINECONE\_API\_KEY} are loaded from \texttt{.env} via \texttt{python-dotenv}. The \texttt{.gitignore} excludes \texttt{.env} from version control.
+    \item \textbf{CORS:} Currently \texttt{allow\_origins=["*"]} for local development. In production, lock this to the specific frontend domain (e.g., \texttt{https://lushio.com}).
+    \item \textbf{Input Validation:} All requests are validated against a Pydantic schema. Invalid or empty queries are rejected with HTTP 422.
+    \item \textbf{Error Handling:} All LLM calls are wrapped in \texttt{try/except}. Node failures fall through gracefully. The API endpoint catches \texttt{ValueError} (400) and all other exceptions (500) separately.
+    \item \textbf{Cache TTL:} The in-memory cache has no expiry. Stale inventory data could be returned. A production system would use \textbf{Redis} with a short TTL (e.g., 60 seconds for inventory, longer for policies).
+    \item \textbf{MCP Process Overhead:} Each tool call spawns a new subprocess. In production, use a persistent MCP server process with a connection pool to reduce latency.
+\end{itemize}
+
+\end{document}

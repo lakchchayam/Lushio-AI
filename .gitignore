@@ -1,0 +1,8 @@
+venv/
+.env
+__pycache__/
+*.log
+assets/logs/
+eval_results.json
+.DS_Store
+node_modules/

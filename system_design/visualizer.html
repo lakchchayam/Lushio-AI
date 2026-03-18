@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lushio AI | System Design Visualizer</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Outfit:wght@500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg: #030308;
+            --glass: rgba(255, 255, 255, 0.03);
+            --border: rgba(255, 255, 255, 0.07);
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-pink: #d946ef;
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --success: #10b981;
+            --warning: #f59e0b;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background-color: var(--bg);
+            color: var(--text-primary);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            background-image: radial-gradient(circle at 50% 50%, #0a0a20 0%, #030308 100%);
+        }
+
+        /* Ambient Glows */
+        .glow {
+            position: fixed;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            filter: blur(120px);
+            z-index: -1;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+        .glow-1 { top: -100px; left: -100px; background: var(--accent-blue); }
+        .glow-2 { bottom: -100px; right: -100px; background: var(--accent-purple); }
+
+        /* Header */
+        header {
+            padding: 40px 5%;
+            text-align: center;
+        }
+        header h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 2.8rem;
+            letter-spacing: -0.02em;
+            background: linear-gradient(135deg, var(--blue), var(--purple), var(--pink));
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 8px;
+        }
+        header p {
+            color: var(--text-secondary);
+            font-size: 0.95rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        /* Visualization Area */
+        .visualizer-container {
+            width: 90%;
+            max-width: 1200px;
+            margin: 0 auto 40px;
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            position: relative;
+            backdrop-filter: blur(12px);
+            height: 550px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+        }
+
+        /* Floating Info Box */
+        .node-info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            max-width: 320px;
+            background: rgba(0,0,0,0.85);
+            border: 1px solid var(--border);
+            padding: 24px;
+            border-radius: 20px;
+            z-index: 10;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+        }
+        .node-info h2 {
+            font-size: 1.1rem;
+            color: var(--accent-blue);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .node-info p {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Deep Insight Sidebar */
+        .deep-insight {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 280px;
+            background: rgba(0,0,0,0.85);
+            border: 1px solid var(--border);
+            padding: 20px;
+            border-radius: 20px;
+            z-index: 10;
+            display: none; /* Shown during flow */
+            animation: fadeIn 0.4s ease-out;
+        }
+        .deep-insight h3 {
+            font-size: 0.7rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 10px;
+        }
+        .insight-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 12px;
+            font-size: 0.8rem;
+        }
+        .insight-label { color: #64748b; }
+        .insight-value { color: #fff; font-family: 'Monaco', monospace; }
+
+        /* Security Guard Pulse */
+        .security-pulse {
+            position: absolute;
+            top: 50%;
+            left: 35%; /* Supervisor x */
+            transform: translate(-50%, -50%);
+            width: 150px;
+            height: 150px;
+            border: 2px solid var(--accent-purple);
+            border-radius: 50%;
+            pointer-events: none;
+            opacity: 0;
+            z-index: 5;
+        }
+        .pulse-active {
+            animation: securityPulse 1s ease-out forwards;
+        }
+
+        @keyframes securityPulse {
+            0% { transform: translate(-50%, -50%) scale(0.5); opacity: 0; }
+            50% { opacity: 0.5; }
+            100% { transform: translate(-50%, -50%) scale(2); opacity: 0; }
+        }
+
+        /* Controls */
+        .controls {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            margin-top: -25px;
+            position: relative;
+            z-index: 20;
+        }
+        .btn {
+            background: #111;
+            border: 1px solid var(--border);
+            color: #fff;
+            padding: 12px 24px;
+            border-radius: 12px;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.85rem;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn:hover {
+            border-color: var(--accent-purple);
+            transform: translateY(-2px);
+            background: #1a1a1a;
+        }
+        .btn.active {
+            background: var(--accent-purple);
+            border-color: var(--accent-purple);
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.4);
+        }
+
+        /* Bottom Grid */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            width: 90%;
+            max-width: 1200px;
+            margin: 40px auto;
+        }
+        .card {
+            background: var(--glass);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 24px;
+            backdrop-filter: blur(8px);
+        }
+        .card h3 {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .card h3::before {
+            content: '';
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: var(--accent-blue);
+        }
+
+        /* Trace Log */
+        .trace {
+            font-family: 'Monaco', monospace;
+            font-size: 0.75rem;
+            height: 120px;
+            overflow-y: auto;
+            color: #7dd3fc;
+        }
+        .trace-entry {
+            margin-bottom: 8px;
+            animation: slideIn 0.3s ease-out;
+            border-left: 2px solid var(--border);
+            padding-left: 10px;
+        }
+        .trace-time { color: #475569; margin-right: 8px; }
+
+        /* Metrics */
+        .metric {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+        }
+        .metric-label { font-size: 0.85rem; color: #94a3b8; }
+        .metric-value { font-size: 1.2rem; font-weight: 700; color: #fff; font-family: 'Outfit', sans-serif; }
+
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateX(-10px); }
+            to { opacity: 1; transform: translateX(0); }
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .visualizer-container { height: 400px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="glow glow-1"></div>
+    <div class="glow glow-2"></div>
+
+    <header>
+        <h1>Lushio AI Architecture</h1>
+        <p>A premium visualization of the multi-agent LangGraph system designed for PwC standards. Data atoms flowing through specialized reasoning nodes.</p>
+    </header>
+
+    <div class="visualizer-container">
+        <div class="node-info" id="nodeInfo">
+            <h2 id="nodeTitle">System Idle</h2>
+            <p id="nodeDesc">Select a stage below to visualize the data flow through the Lushio AI pipeline.</p>
+        </div>
+        
+        <!-- Deep Insight Panel -->
+        <div class="deep-insight" id="deepInsight">
+            <h3>Technical Metadata</h3>
+            <div class="insight-row">
+                <span class="insight-label">LLM Core</span>
+                <span class="insight-value">llama-3.1-8b</span>
+            </div>
+            <div class="insight-row">
+                <span class="insight-label">Embedding</span>
+                <span class="insight-value">all-MiniLM-L6</span>
+            </div>
+            <div class="insight-row">
+                <span class="insight-label">Vector DB</span>
+                <span class="insight-value">Pinecone v3</span>
+            </div>
+            <div class="insight-row">
+                <span class="insight-label">Latency</span>
+                <span class="insight-value" id="liveLatency">0ms</span>
+            </div>
+            <div class="insight-row">
+                <span class="insight-label">Tokens</span>
+                <span class="insight-value" id="liveTokens">0</span>
+            </div>
+        </div>
+
+        <div class="security-pulse" id="secPulse"></div>
+        <canvas id="flowCanvas"></canvas>
+    </div>
+
+    <div class="controls">
+        <button class="btn btn-stage active" data-stage="start" onclick="setStage('start')">1. Input</button>
+        <button class="btn btn-stage" data-stage="supervisor" onclick="setStage('supervisor')">2. Supervisor</button>
+        <button class="btn btn-stage" data-stage="research" onclick="setStage('research')">3. Research</button>
+        <button class="btn btn-stage" data-stage="writer" onclick="setStage('writer')">4. Synthesis</button>
+        <button class="btn" onclick="runFullFlow()" style="background: #fff; color: #000; font-weight: 700;">▶ Run Full Loop</button>
+    </div>
+
+    <div class="stats-grid">
+        <div class="card">
+            <h3>Execution Trace</h3>
+            <div class="trace" id="traceLog">
+                <div class="trace-entry"><span class="trace-time">16:00:01</span> System initialized...</div>
+            </div>
+        </div>
+        <div class="card">
+            <h3>Reliability Metrics</h3>
+            <div class="metric">
+                <span class="metric-label">Avg. Latency</span>
+                <span class="metric-value">482ms</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Faithfulness Score</span>
+                <span class="metric-value" style="color: var(--success);">98.4%</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Token Efficiency</span>
+                <span class="metric-value">0.85x</span>
+            </div>
+        </div>
+        <div class="card">
+            <h3>System State</h3>
+            <div class="metric">
+                <span class="metric-label">Memory Usage</span>
+                <span class="metric-value">12.4 MB</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">Active Agents</span>
+                <span class="metric-value" id="activeAgentCount">0</span>
+            </div>
+            <div class="metric">
+                <span class="metric-label">RAG Context Hits</span>
+                <span class="metric-value">94%</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('flowCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        function resize() {
+            width = canvas.parentElement.clientWidth;
+            height = canvas.parentElement.clientHeight;
+            canvas.width = width;
+            canvas.height = height;
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // Node Definitions
+        const nodes = [
+            { id: 'user', label: 'User Query', x: 0.1, y: 0.5, color: '#fff', info: { title: 'User Input', desc: 'Raw customer query enters via FastAPI. Query is first normalized and checked against the semantic QUERY_CACHE.' } },
+            { id: 'supervisor', label: 'Supervisor', x: 0.35, y: 0.5, color: '#8b5cf6', info: { title: 'Supervisor Node', desc: 'Orchestrator sanitizes inputs and generates a high-level plan. It acts as a security guardrails layer.' } },
+            { id: 'research', label: 'Researcher', x: 0.65, y: 0.3, color: '#3b82f6', info: { title: 'Research Agent', desc: 'Performs similarity search in Pinecone and fetches real-time inventory levels via Tool Calls.' } },
+            { id: 'writer', label: 'Writer', x: 0.65, y: 0.7, color: '#d946ef', info: { title: 'Synthesis Agent', desc: 'Drafts the final response using a dedicated Writer prompt, ensuring zero-hallucination delivery.' } },
+            { id: 'output', label: 'Response', x: 0.9, y: 0.5, color: '#10b981', info: { title: 'Final Output', desc: 'Strict Pydantic validation ensures the JSON structure is preserved for the frontend UI.' } }
+        ];
+
+        // Edge Definitions
+        const edges = [
+            { from: 'user', to: 'supervisor', type: 'primary' },
+            { from: 'supervisor', to: 'research', type: 'primary' },
+            { from: 'research', to: 'supervisor', type: 'feedback' },
+            { from: 'supervisor', to: 'writer', type: 'primary' },
+            { from: 'writer', to: 'output', type: 'primary' }
+        ];
+
+        let currentStage = 'idle';
+        let particles = [];
+        let animationFrame;
+
+        class Particle {
+            constructor(fromNode, toNode, color) {
+                this.from = fromNode;
+                this.to = toNode;
+                this.color = color;
+                this.t = 0;
+                this.speed = 0.005 + Math.random() * 0.01;
+                this.size = 2 + Math.random() * 3;
+            }
+            update() {
+                this.t += this.speed;
+                return this.t >= 1;
+            }
+            draw() {
+                const x = this.from.x * width + (this.to.x * width - this.from.x * width) * this.t;
+                const y = this.from.y * height + (this.to.y * height - this.from.y * height) * this.t;
+                
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(x, y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            }
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, width, height);
+
+            // Draw Edges
+            edges.forEach(edge => {
+                const from = nodes.find(n => n.id === edge.from);
+                const to = nodes.find(n => n.id === edge.to);
+                
+                ctx.beginPath();
+                ctx.moveTo(from.x * width, from.y * height);
+                ctx.lineTo(to.x * width, to.y * height);
+                ctx.strokeStyle = edge.type === 'primary' ? 'rgba(255,255,255,0.05)' : 'rgba(139, 92, 246, 0.05)';
+                ctx.setLineDash(edge.type === 'feedback' ? [5, 5] : []);
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                ctx.setLineDash([]);
+            });
+
+            // Draw Nodes
+            nodes.forEach(node => {
+                const nx = node.x * width;
+                const ny = node.y * height;
+                const isActive = checkNodeActive(node.id);
+
+                // Glow for active node
+                if (isActive) {
+                    const gradient = ctx.createRadialGradient(nx, ny, 10, nx, ny, 40);
+                    gradient.addColorStop(0, node.color + '33');
+                    gradient.addColorStop(1, 'transparent');
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(nx, ny, 40, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+
+                ctx.fillStyle = isActive ? node.color : '#1a1a1a';
+                ctx.beginPath();
+                ctx.arc(nx, ny, 10, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.strokeStyle = isActive ? '#fff' : 'rgba(255,255,255,0.1)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                ctx.fillStyle = isActive ? '#fff' : '#64748b';
+                ctx.font = '500 12px Inter';
+                ctx.textAlign = 'center';
+                ctx.fillText(node.label, nx, ny + 30);
+            });
+
+            // Particles
+            if (currentStage !== 'idle' && Math.random() < 0.1) {
+                spawnParticlesForStage();
+            }
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                if (particles[i].update()) {
+                    particles.splice(i, 1);
+                } else {
+                    particles[i].draw();
+                }
+            }
+
+            animationFrame = requestAnimationFrame(draw);
+        }
+
+        function checkNodeActive(id) {
+            if (currentStage === 'start') return id === 'user';
+            if (currentStage === 'supervisor') return id === 'supervisor';
+            if (currentStage === 'research') return id === 'research';
+            if (currentStage === 'writer') return id === 'writer';
+            if (currentStage === 'full') return true;
+            return false;
+        }
+
+        function spawnParticlesForStage() {
+            let from, to, color;
+            if (currentStage === 'start') {
+                from = nodes[0]; to = nodes[1]; color = '#fff';
+            } else if (currentStage === 'supervisor') {
+                from = nodes[1]; to = nodes[2]; color = '#8b5cf6';
+            } else if (currentStage === 'research') {
+                from = nodes[2]; to = nodes[1]; color = '#3b82f6';
+            } else if (currentStage === 'writer') {
+                from = nodes[1]; to = nodes[3]; color = '#d946ef';
+            }
+            if (from && to) particles.push(new Particle(from, to, color));
+        }
+
+        function setStage(stage) {
+            currentStage = stage;
+            const node = nodes.find(n => n.id === (stage === 'start' ? 'user' : stage));
+            if (node) {
+                document.getElementById('nodeTitle').innerText = node.info.title;
+                document.getElementById('nodeDesc').innerText = node.info.desc;
+                addTrace(`Stage changed: ${node.label}`);
+            }
+            
+            document.querySelectorAll('.btn-stage').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.stage === stage);
+            });
+
+            document.getElementById('activeAgentCount').innerText = (stage === 'idle' || stage === 'start') ? '0' : '1';
+        }
+
+        function addTrace(msg) {
+            const log = document.getElementById('traceLog');
+            const time = new Date().toLocaleTimeString([], { hour12: false });
+            log.innerHTML = `<div class="trace-entry"><span class="trace-time">${time}</span> ${msg}</div>` + log.innerHTML;
+        }
+
+        async function runFullFlow() {
+            setStage('start');
+            toggleInsight(true);
+            updateLiveMetrics(0, 0);
+            await wait(1500);
+            
+            setStage('supervisor');
+            triggerSecurityPulse();
+            updateLiveMetrics(120, 85);
+            await wait(2000);
+            
+            setStage('research');
+            updateLiveMetrics(840, 240);
+            await wait(2500);
+            
+            setStage('supervisor');
+            addTrace("Evaluator: Data sufficient. Handoff to Writer.");
+            updateLiveMetrics(1100, 310);
+            await wait(1500);
+            
+            setStage('writer');
+            updateLiveMetrics(1450, 480);
+            await wait(2000);
+            
+            addTrace("Pipeline Complete. Delivery successful.");
+            currentStage = 'idle';
+            setTimeout(() => toggleInsight(false), 3000);
+        }
+
+        function toggleInsight(show) {
+            document.getElementById('deepInsight').style.display = show ? 'block' : 'none';
+        }
+
+        function updateLiveMetrics(lat, tok) {
+            document.getElementById('liveLatency').innerText = lat + 'ms';
+            document.getElementById('liveTokens').innerText = tok;
+        }
+
+        function triggerSecurityPulse() {
+            const pulse = document.getElementById('secPulse');
+            pulse.classList.remove('pulse-active');
+            void pulse.offsetWidth; // Trigger reflow
+            pulse.classList.add('pulse-active');
+            addTrace("Security: Sanitizing directive via Supervisor...");
+        }
+
+        function wait(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+        draw();
+    </script>
+</body>
+</html>

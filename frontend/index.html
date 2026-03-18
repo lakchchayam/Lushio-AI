@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lushio AI Assistant</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts for modern typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="chat-container">
+        <header class="chat-header">
+            <div class="header-info">
+                <h1>Lushio AI</h1>
+                <span class="status-indicator"></span><span class="status-text">Online</span>
+            </div>
+            <p>Your intelligent store assistant</p>
+        </header>
+        
+        <main class="chat-box" id="chat-box">
+            <!-- Chat messages will be dynamically injected here -->
+            <div class="message ai-message">
+                <div class="message-bubble">
+                    Hello! I'm Lushio AI. I can check our inventory or answer questions about our store policies. How can I help you today?
+                </div>
+            </div>
+        </main>
+        
+        <footer class="chat-input-area">
+            <form id="chat-form">
+                <div class="input-wrapper">
+                    <input type="text" id="user-input" placeholder="Type your question here (e.g., 'Do you have laptops?')" autocomplete="off" required>
+                    <button type="submit" id="send-btn" aria-label="Send message">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
+                            <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
+                        </svg>
+                    </button>
+                </div>
+            </form>
+        </footer>
+    </div>
+
+    <!-- Template for rendering products -->
+    <template id="product-card-template">
+        <div class="product-card">
+            <h4 class="product-name"></h4>
+            <div class="product-details">
+                <span class="product-price"></span>
+                <span class="product-stock status-badge"></span>
+            </div>
+        </div>
+    </template>
+
+    <script src="app.js"></script>
+</body>
+</html>
