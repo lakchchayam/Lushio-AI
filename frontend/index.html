@@ -1,57 +1,330 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lushio AI Assistant</title>
-    <link rel="stylesheet" href="style.css">
-    <!-- Google Fonts for modern typography -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lushio AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      width: 100%; height: 100%;
+      background: transparent;
+      font-family: 'Inter', sans-serif;
+      overflow: hidden;
+    }
+
+    /* ── WIDGET SHELL ── */
+    .widget {
+      width: 320px;
+      min-height: 360px;
+      max-height: 520px;
+      border-radius: 24px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      background: rgba(20, 20, 25, 0.72);
+      backdrop-filter: blur(28px) saturate(160%);
+      -webkit-backdrop-filter: blur(28px) saturate(160%);
+      border: 1px solid rgba(255,255,255,0.10);
+      box-shadow:
+        0 8px 40px rgba(0,0,0,0.55),
+        0 2px 8px rgba(0,0,0,0.30),
+        inset 0 1px 0 rgba(255,255,255,0.08);
+      color: #f0ede8;
+    }
+
+    /* ── LOGO ── */
+    .logo-wrap {
+      display: flex;
+      justify-content: center;
+      padding: 22px 0 10px;
+    }
+    .logo-ring {
+      width: 68px; height: 68px;
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .logo-ring svg.spinner {
+      position: absolute; top: 0; left: 0;
+      width: 68px; height: 68px;
+      animation: spin 8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .logo-inner {
+      width: 48px; height: 48px;
+      border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, #b8d4f0, #5b8fc9 50%, #1e3a5c);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.15rem; font-weight: 700;
+      color: #e8f4ff;
+      letter-spacing: -0.5px;
+      box-shadow: 0 0 18px rgba(100,180,255,0.45), 0 0 6px rgba(100,180,255,0.25);
+      font-style: italic;
+    }
+
+    /* ── GREETING ── */
+    .greeting {
+      padding: 4px 22px 14px;
+      font-size: 0.95rem;
+      font-weight: 400;
+      line-height: 1.55;
+      color: rgba(240,237,232,0.90);
+      text-align: left;
+    }
+
+    /* ── MESSAGES ── */
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 14px 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      scrollbar-width: thin;
+      scrollbar-color: rgba(255,255,255,0.12) transparent;
+    }
+    .messages::-webkit-scrollbar { width: 3px; }
+    .messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+
+    .msg {
+      max-width: 88%;
+      padding: 9px 13px;
+      border-radius: 16px;
+      font-size: 0.875rem;
+      line-height: 1.5;
+      animation: fadeUp 0.25s ease;
+    }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .msg.ai {
+      align-self: flex-start;
+      background: rgba(255,255,255,0.07);
+      border: 1px solid rgba(255,255,255,0.09);
+      color: #e8e4df;
+      border-bottom-left-radius: 4px;
+    }
+    .msg.user {
+      align-self: flex-end;
+      background: rgba(100,160,230,0.22);
+      border: 1px solid rgba(100,160,230,0.18);
+      color: #ddeeff;
+      border-bottom-right-radius: 4px;
+    }
+
+    /* typing dots */
+    .typing { display: flex; gap: 5px; padding: 12px 16px; align-items: center; }
+    .typing span {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(255,255,255,0.5);
+      animation: bounce 1.2s infinite;
+    }
+    .typing span:nth-child(2) { animation-delay: .2s; }
+    .typing span:nth-child(3) { animation-delay: .4s; }
+    @keyframes bounce {
+      0%,60%,100% { transform: translateY(0); }
+      30% { transform: translateY(-6px); }
+    }
+
+    /* ── QUICK BUTTONS ── */
+    .quick-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      padding: 2px 14px 10px;
+    }
+    .q-btn {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.13);
+      color: rgba(240,237,232,0.88);
+      border-radius: 22px;
+      padding: 8px 16px;
+      font-size: 0.825rem;
+      font-family: 'Inter', sans-serif;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.18s, border-color 0.18s, transform 0.12s;
+    }
+    .q-btn:hover {
+      background: rgba(255,255,255,0.12);
+      border-color: rgba(255,255,255,0.22);
+      transform: translateX(2px);
+    }
+
+    /* ── INPUT ── */
+    .input-wrap {
+      border-top: 1px solid rgba(255,255,255,0.08);
+      padding: 12px 14px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .input-wrap input {
+      flex: 1;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 22px;
+      padding: 9px 14px;
+      color: #f0ede8;
+      font-size: 0.85rem;
+      font-family: 'Inter', sans-serif;
+      outline: none;
+      transition: border-color 0.18s, background 0.18s;
+    }
+    .input-wrap input::placeholder { color: rgba(240,237,232,0.40); }
+    .input-wrap input:focus {
+      border-color: rgba(100,160,230,0.45);
+      background: rgba(255,255,255,0.08);
+    }
+    .send-btn {
+      background: rgba(100,160,230,0.20);
+      border: 1px solid rgba(100,160,230,0.30);
+      color: #a8d0f8;
+      border-radius: 50%;
+      width: 36px; height: 36px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer;
+      font-size: 0.9rem;
+      transition: background 0.18s, transform 0.12s;
+      flex-shrink: 0;
+    }
+    .send-btn:hover { background: rgba(100,160,230,0.35); transform: scale(1.08); }
+    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  </style>
 </head>
 <body>
-    <div class="chat-container">
-        <header class="chat-header">
-            <div class="header-info">
-                <h1>Lushio AI</h1>
-                <span class="status-indicator"></span><span class="status-text">Online</span>
-            </div>
-            <p>Your intelligent store assistant</p>
-        </header>
-        
-        <main class="chat-box" id="chat-box">
-            <!-- Chat messages will be dynamically injected here -->
-            <div class="message ai-message">
-                <div class="message-bubble">
-                    Hello! I'm Lushio AI. I can check our inventory or answer questions about our store policies. How can I help you today?
-                </div>
-            </div>
-        </main>
-        
-        <footer class="chat-input-area">
-            <form id="chat-form">
-                <div class="input-wrapper">
-                    <input type="text" id="user-input" placeholder="Type your question here (e.g., 'Do you have laptops?')" autocomplete="off" required>
-                    <button type="submit" id="send-btn" aria-label="Send message">
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" width="20" height="20">
-                            <path d="M3.478 2.405a.75.75 0 00-.926.94l2.432 7.905H13.5a.75.75 0 010 1.5H4.984l-2.432 7.905a.75.75 0 00.926.94 60.519 60.519 0 0018.445-8.986.75.75 0 000-1.218A60.517 60.517 0 003.478 2.405z" />
-                        </svg>
-                    </button>
-                </div>
-            </form>
-        </footer>
+
+<div class="widget" id="widget">
+
+  <!-- Logo -->
+  <div class="logo-wrap">
+    <div class="logo-ring">
+      <!-- Spinning decorative ring -->
+      <svg class="spinner" viewBox="0 0 68 68" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#64b4ff" stop-opacity="0.9"/>
+            <stop offset="50%" stop-color="#a0d4ff" stop-opacity="0.4"/>
+            <stop offset="100%" stop-color="#2060a0" stop-opacity="0.1"/>
+          </linearGradient>
+        </defs>
+        <!-- Three arcing petals -->
+        <path d="M34 6 Q58 14 58 34 Q58 20 34 6Z" fill="url(#rg)" opacity="0.8"/>
+        <path d="M34 6 Q10 14 10 34 Q10 20 34 6Z" fill="url(#rg)" opacity="0.5" transform="rotate(120 34 34)"/>
+        <path d="M34 6 Q10 14 10 34 Q10 20 34 6Z" fill="url(#rg)" opacity="0.5" transform="rotate(240 34 34)"/>
+        <circle cx="34" cy="34" r="26" stroke="rgba(100,180,255,0.18)" stroke-width="1.2" fill="none"/>
+        <circle cx="34" cy="34" r="32" stroke="rgba(100,180,255,0.08)" stroke-width="0.8" fill="none"/>
+      </svg>
+      <div class="logo-inner">LS</div>
     </div>
+  </div>
 
-    <!-- Template for rendering products -->
-    <template id="product-card-template">
-        <div class="product-card">
-            <h4 class="product-name"></h4>
-            <div class="product-details">
-                <span class="product-price"></span>
-                <span class="product-stock status-badge"></span>
-            </div>
-        </div>
-    </template>
+  <!-- Greeting (shown when no messages yet) -->
+  <div class="greeting" id="greeting">
+    Hi! How can I help with your experience? Ask about our collections, store policies, or anything Lushio.
+  </div>
 
-    <script src="app.js"></script>
+  <!-- Messages -->
+  <div class="messages" id="messages"></div>
+
+  <!-- Quick buttons -->
+  <div class="quick-btns" id="quick-btns">
+    <button class="q-btn" onclick="sendQuick('Check availability of products')">Check Availability</button>
+    <button class="q-btn" onclick="sendQuick('What are your store policies and returns?')">Store Policies</button>
+    <button class="q-btn" onclick="sendQuick('Tell me about Lushio collections')">Lushio Collections</button>
+  </div>
+
+  <!-- Input -->
+  <div class="input-wrap">
+    <input id="chat-input" type="text" placeholder="Ask me anything..." autocomplete="off" />
+    <button class="send-btn" id="send-btn" title="Send">&#10148;</button>
+  </div>
+</div>
+
+<script>
+  // ── CONFIG ──
+  // Reads ?api= from URL so the parent page can pass the backend URL
+  const params = new URLSearchParams(window.location.search);
+  const API_URL = params.get('api') || 'https://lushio-ai.onrender.com/ask';
+
+  const messagesEl  = document.getElementById('messages');
+  const inputEl     = document.getElementById('chat-input');
+  const sendBtnEl   = document.getElementById('send-btn');
+  const greetingEl  = document.getElementById('greeting');
+  const quickBtnsEl = document.getElementById('quick-btns');
+
+  let firstMessage = true;
+
+  function hideGreetingAndQuick() {
+    if (firstMessage) {
+      greetingEl.style.display  = 'none';
+      quickBtnsEl.style.display = 'none';
+      firstMessage = false;
+    }
+  }
+
+  function addMsg(text, role) {
+    const d = document.createElement('div');
+    d.className = `msg ${role}`;
+    d.textContent = text;
+    messagesEl.appendChild(d);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+    return d;
+  }
+
+  function addTyping() {
+    const d = document.createElement('div');
+    d.className = 'msg ai';
+    d.id = 'typing';
+    d.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
+    messagesEl.appendChild(d);
+    messagesEl.scrollTop = messagesEl.scrollHeight;
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('typing');
+    if (t) t.remove();
+  }
+
+  async function sendMessage(query) {
+    if (!query.trim()) return;
+    hideGreetingAndQuick();
+
+    addMsg(query, 'user');
+    inputEl.value = '';
+    inputEl.disabled = true;
+    sendBtnEl.disabled = true;
+    addTyping();
+
+    try {
+      const res  = await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query })
+      });
+      removeTyping();
+      if (!res.ok) throw new Error('Server error ' + res.status);
+      const data = await res.json();
+      const answer = data?.final_answer?.message || 'Got it!';
+      addMsg(answer, 'ai');
+    } catch (err) {
+      removeTyping();
+      addMsg('⚠️ Unable to connect. Please try again shortly.', 'ai');
+    } finally {
+      inputEl.disabled = false;
+      sendBtnEl.disabled = false;
+      inputEl.focus();
+    }
+  }
+
+  function sendQuick(text) { sendMessage(text); }
+
+  sendBtnEl.addEventListener('click', () => sendMessage(inputEl.value));
+  inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(inputEl.value); });
+</script>
 </body>
 </html>
