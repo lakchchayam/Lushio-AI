@@ -45,7 +45,7 @@ llm = ChatGroq(
     model_name="llama-3.1-8b-instant",
 )
 
-from tools import check_inventory, search_documents
+from src.tools import check_inventory, search_documents
 import subprocess
 import sys
 from mcp import ClientSession, StdioServerParameters
