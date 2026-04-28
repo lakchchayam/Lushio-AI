@@ -1,330 +1,411 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Lushio AI</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet" />
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<style>
+/* ══════════════════════════════════════════
+   LUSHIO AI CHAT WIDGET
+   ══════════════════════════════════════════ */
 
-    html, body {
-      width: 100%; height: 100%;
-      background: transparent;
-      font-family: 'Inter', sans-serif;
-      overflow: hidden;
-    }
+/* ── FAB (Floating Action Button) ── */
+.lc-fab {
+  position: fixed;
+  bottom: 28px;
+  right: 28px;
+  z-index: 99999;
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(100, 180, 255, 0.35);
+  background: rgba(15, 20, 30, 0.82);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  color: #a8d4ff;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45), 0 0 0 0 rgba(100, 180, 255, 0.3);
+  transition: transform 0.22s ease, box-shadow 0.22s ease, border-color 0.22s ease;
+}
+.lc-fab:hover {
+  transform: scale(1.08);
+  box-shadow: 0 6px 32px rgba(0, 0, 0, 0.55), 0 0 0 6px rgba(100, 180, 255, 0.12);
+  border-color: rgba(100, 180, 255, 0.55);
+}
+.lc-fab--open {
+  background: rgba(30, 35, 50, 0.90);
+}
 
-    /* ── WIDGET SHELL ── */
-    .widget {
-      width: 320px;
-      min-height: 360px;
-      max-height: 520px;
-      border-radius: 24px;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      background: rgba(20, 20, 25, 0.72);
-      backdrop-filter: blur(28px) saturate(160%);
-      -webkit-backdrop-filter: blur(28px) saturate(160%);
-      border: 1px solid rgba(255,255,255,0.10);
-      box-shadow:
-        0 8px 40px rgba(0,0,0,0.55),
-        0 2px 8px rgba(0,0,0,0.30),
-        inset 0 1px 0 rgba(255,255,255,0.08);
-      color: #f0ede8;
-    }
+.lc-fab-logo {
+  font-size: 1.05rem;
+  font-weight: 700;
+  font-style: italic;
+  color: #c8e4ff;
+  letter-spacing: -0.5px;
+  font-family: 'Inter', sans-serif;
+}
 
-    /* ── LOGO ── */
-    .logo-wrap {
-      display: flex;
-      justify-content: center;
-      padding: 22px 0 10px;
-    }
-    .logo-ring {
-      width: 68px; height: 68px;
-      position: relative;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .logo-ring svg.spinner {
-      position: absolute; top: 0; left: 0;
-      width: 68px; height: 68px;
-      animation: spin 8s linear infinite;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+/* ── PANEL ── */
+.lc-panel {
+  position: fixed;
+  bottom: 98px;
+  right: 28px;
+  z-index: 99998;
+  width: 320px;
+  border-radius: 24px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: rgba(14, 18, 28, 0.78);
+  backdrop-filter: blur(30px) saturate(170%);
+  -webkit-backdrop-filter: blur(30px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow:
+    0 12px 48px rgba(0, 0, 0, 0.60),
+    0 2px 8px rgba(0, 0, 0, 0.30),
+    inset 0 1px 0 rgba(255, 255, 255, 0.07);
+  color: #f0ede8;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  
+  /* hidden state */
+  opacity: 0;
+  transform: translateY(16px) scale(0.97);
+  pointer-events: none;
+  transition: opacity 0.26s ease, transform 0.26s ease;
+}
+.lc-panel--open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
 
-    .logo-inner {
-      width: 48px; height: 48px;
-      border-radius: 50%;
-      background: radial-gradient(circle at 35% 35%, #b8d4f0, #5b8fc9 50%, #1e3a5c);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 1.15rem; font-weight: 700;
-      color: #e8f4ff;
-      letter-spacing: -0.5px;
-      box-shadow: 0 0 18px rgba(100,180,255,0.45), 0 0 6px rgba(100,180,255,0.25);
-      font-style: italic;
-    }
+/* ── TOP: Logo + greeting ── */
+.lc-top {
+  padding: 20px 18px 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
 
-    /* ── GREETING ── */
-    .greeting {
-      padding: 4px 22px 14px;
-      font-size: 0.95rem;
-      font-weight: 400;
-      line-height: 1.55;
-      color: rgba(240,237,232,0.90);
-      text-align: left;
-    }
+.lc-logo-ring {
+  width: 64px;
+  height: 64px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.lc-spinner {
+  position: absolute;
+  top: 0; left: 0;
+  width: 64px; height: 64px;
+  animation: lc-spin 8s linear infinite;
+}
+@keyframes lc-spin { to { transform: rotate(360deg); } }
 
-    /* ── MESSAGES ── */
-    .messages {
-      flex: 1;
-      overflow-y: auto;
-      padding: 0 14px 8px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      scrollbar-width: thin;
-      scrollbar-color: rgba(255,255,255,0.12) transparent;
-    }
-    .messages::-webkit-scrollbar { width: 3px; }
-    .messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 4px; }
+.lc-logo-inner {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, #b8d4f0, #5b8fc9 50%, #1e3a5c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1rem;
+  font-weight: 700;
+  font-style: italic;
+  color: #e8f4ff;
+  letter-spacing: -0.5px;
+  box-shadow: 0 0 16px rgba(100, 180, 255, 0.40);
+}
 
-    .msg {
-      max-width: 88%;
-      padding: 9px 13px;
-      border-radius: 16px;
-      font-size: 0.875rem;
-      line-height: 1.5;
-      animation: fadeUp 0.25s ease;
-    }
-    @keyframes fadeUp {
-      from { opacity: 0; transform: translateY(6px); }
-      to   { opacity: 1; transform: translateY(0); }
-    }
-    .msg.ai {
-      align-self: flex-start;
-      background: rgba(255,255,255,0.07);
-      border: 1px solid rgba(255,255,255,0.09);
-      color: #e8e4df;
-      border-bottom-left-radius: 4px;
-    }
-    .msg.user {
-      align-self: flex-end;
-      background: rgba(100,160,230,0.22);
-      border: 1px solid rgba(100,160,230,0.18);
-      color: #ddeeff;
-      border-bottom-right-radius: 4px;
-    }
+.lc-greeting {
+  font-size: 0.875rem;
+  font-weight: 400;
+  line-height: 1.55;
+  color: rgba(240, 237, 232, 0.88);
+  text-align: center;
+  margin: 0;
+}
 
-    /* typing dots */
-    .typing { display: flex; gap: 5px; padding: 12px 16px; align-items: center; }
-    .typing span {
-      width: 6px; height: 6px; border-radius: 50%;
-      background: rgba(255,255,255,0.5);
-      animation: bounce 1.2s infinite;
-    }
-    .typing span:nth-child(2) { animation-delay: .2s; }
-    .typing span:nth-child(3) { animation-delay: .4s; }
-    @keyframes bounce {
-      0%,60%,100% { transform: translateY(0); }
-      30% { transform: translateY(-6px); }
-    }
+/* ── MESSAGES ── */
+.lc-messages {
+  flex: 1;
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px 14px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+.lc-messages::-webkit-scrollbar { width: 3px; }
+.lc-messages::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
 
-    /* ── QUICK BUTTONS ── */
-    .quick-btns {
-      display: flex;
-      flex-direction: column;
-      gap: 7px;
-      padding: 2px 14px 10px;
-    }
-    .q-btn {
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.13);
-      color: rgba(240,237,232,0.88);
-      border-radius: 22px;
-      padding: 8px 16px;
-      font-size: 0.825rem;
-      font-family: 'Inter', sans-serif;
-      cursor: pointer;
-      text-align: left;
-      transition: background 0.18s, border-color 0.18s, transform 0.12s;
-    }
-    .q-btn:hover {
-      background: rgba(255,255,255,0.12);
-      border-color: rgba(255,255,255,0.22);
-      transform: translateX(2px);
-    }
+.lc-msg {
+  max-width: 90%;
+  padding: 8px 12px;
+  border-radius: 16px;
+  font-size: 0.83rem;
+  line-height: 1.5;
+  animation: lc-fadeUp 0.22s ease;
+}
+@keyframes lc-fadeUp {
+  from { opacity: 0; transform: translateY(5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.lc-msg--ai {
+  align-self: flex-start;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: #e4e0db;
+  border-bottom-left-radius: 4px;
+}
+.lc-msg--user {
+  align-self: flex-end;
+  background: rgba(100, 160, 230, 0.20);
+  border: 1px solid rgba(100, 160, 230, 0.18);
+  color: #ddeeff;
+  border-bottom-right-radius: 4px;
+}
 
-    /* ── INPUT ── */
-    .input-wrap {
-      border-top: 1px solid rgba(255,255,255,0.08);
-      padding: 12px 14px;
-      display: flex;
-      gap: 8px;
-      align-items: center;
-    }
-    .input-wrap input {
-      flex: 1;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 22px;
-      padding: 9px 14px;
-      color: #f0ede8;
-      font-size: 0.85rem;
-      font-family: 'Inter', sans-serif;
-      outline: none;
-      transition: border-color 0.18s, background 0.18s;
-    }
-    .input-wrap input::placeholder { color: rgba(240,237,232,0.40); }
-    .input-wrap input:focus {
-      border-color: rgba(100,160,230,0.45);
-      background: rgba(255,255,255,0.08);
-    }
-    .send-btn {
-      background: rgba(100,160,230,0.20);
-      border: 1px solid rgba(100,160,230,0.30);
-      color: #a8d0f8;
-      border-radius: 50%;
-      width: 36px; height: 36px;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer;
-      font-size: 0.9rem;
-      transition: background 0.18s, transform 0.12s;
-      flex-shrink: 0;
-    }
-    .send-btn:hover { background: rgba(100,160,230,0.35); transform: scale(1.08); }
-    .send-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-  </style>
+/* typing dots */
+.lc-dots {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 2px 0;
+}
+.lc-dots span {
+  display: block;
+  width: 5px; height: 5px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.45);
+  animation: lc-bounce 1.2s infinite;
+}
+.lc-dots span:nth-child(2) { animation-delay: 0.2s; }
+.lc-dots span:nth-child(3) { animation-delay: 0.4s; }
+@keyframes lc-bounce {
+  0%, 60%, 100% { transform: translateY(0); }
+  30%           { transform: translateY(-5px); }
+}
+
+/* ── QUICK BUTTONS ── */
+.lc-quick {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 4px 14px 8px;
+}
+.lc-q-btn {
+  background: rgba(255, 255, 255, 0.055);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  color: rgba(240, 237, 232, 0.85);
+  border-radius: 20px;
+  padding: 7px 14px;
+  font-size: 0.80rem;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.16s, border-color 0.16s, transform 0.12s;
+}
+.lc-q-btn:hover {
+  background: rgba(255, 255, 255, 0.10);
+  border-color: rgba(255, 255, 255, 0.20);
+  transform: translateX(3px);
+}
+
+/* ── INPUT ── */
+.lc-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 10px 12px;
+}
+.lc-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 20px;
+  padding: 8px 13px;
+  color: #f0ede8;
+  font-size: 0.82rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.16s, background 0.16s;
+}
+.lc-input::placeholder { color: rgba(240, 237, 232, 0.35); }
+.lc-input:focus {
+  border-color: rgba(100, 160, 230, 0.40);
+  background: rgba(255, 255, 255, 0.08);
+}
+.lc-input:disabled { opacity: 0.5; }
+
+.lc-send {
+  background: transparent;
+  border: none;
+  color: rgba(200, 228, 255, 0.80);
+  font-size: 0.82rem;
+  font-family: inherit;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  padding: 6px 4px;
+  transition: color 0.16s, transform 0.12s;
+}
+.lc-send:hover:not(:disabled) { color: #a8d4ff; transform: translateX(2px); }
+.lc-send:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+
+@media (max-width: 400px) {
+  .lc-panel { width: calc(100vw - 32px); right: 16px; bottom: 85px; }
+  .lc-fab   { right: 16px; bottom: 20px; }
+}
+</style>
 </head>
 <body>
 
-<div class="widget" id="widget">
+<!-- WIDGET HTML -->
+<button class="lc-fab" id="lc-fab" aria-label="Open Lushio AI">
+  <div class="lc-fab-logo" id="lc-fab-logo">LS</div>
+  <svg id="lc-fab-close" style="display:none;" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+    <line x1="18" y1="6" x2="6" y2="18"></line>
+    <line x1="6" y1="6" x2="18" y2="18"></line>
+  </svg>
+</button>
 
-  <!-- Logo -->
-  <div class="logo-wrap">
-    <div class="logo-ring">
-      <!-- Spinning decorative ring -->
-      <svg class="spinner" viewBox="0 0 68 68" fill="none" xmlns="http://www.w3.org/2000/svg">
+<div class="lc-panel" id="lc-panel" aria-hidden="true">
+  <div class="lc-top">
+    <div class="lc-logo-ring">
+      <svg class="lc-spinner" viewBox="0 0 68 68" fill="none">
         <defs>
-          <linearGradient id="rg" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id="lcg" x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stop-color="#64b4ff" stop-opacity="0.9"/>
             <stop offset="50%" stop-color="#a0d4ff" stop-opacity="0.4"/>
             <stop offset="100%" stop-color="#2060a0" stop-opacity="0.1"/>
           </linearGradient>
         </defs>
-        <!-- Three arcing petals -->
-        <path d="M34 6 Q58 14 58 34 Q58 20 34 6Z" fill="url(#rg)" opacity="0.8"/>
-        <path d="M34 6 Q10 14 10 34 Q10 20 34 6Z" fill="url(#rg)" opacity="0.5" transform="rotate(120 34 34)"/>
-        <path d="M34 6 Q10 14 10 34 Q10 20 34 6Z" fill="url(#rg)" opacity="0.5" transform="rotate(240 34 34)"/>
+        <path d="M34 6 Q58 14 58 34 Q58 20 34 6Z" fill="url(#lcg)" opacity="0.8"/>
+        <path d="M34 6 Q10 14 10 34 Q10 20 34 6Z" fill="url(#lcg)" opacity="0.5" transform="rotate(120 34 34)"/>
+        <path d="M34 6 Q10 14 10 34 Q10 20 34 6Z" fill="url(#lcg)" opacity="0.5" transform="rotate(240 34 34)"/>
         <circle cx="34" cy="34" r="26" stroke="rgba(100,180,255,0.18)" stroke-width="1.2" fill="none"/>
-        <circle cx="34" cy="34" r="32" stroke="rgba(100,180,255,0.08)" stroke-width="0.8" fill="none"/>
       </svg>
-      <div class="logo-inner">LS</div>
+      <div class="lc-logo-inner">LS</div>
     </div>
+    <p class="lc-greeting" id="lc-greeting">
+      Hi! How can I help with your experience? Ask about our collections, store policies, or anything Lushio.
+    </p>
   </div>
 
-  <!-- Greeting (shown when no messages yet) -->
-  <div class="greeting" id="greeting">
-    Hi! How can I help with your experience? Ask about our collections, store policies, or anything Lushio.
+  <div class="lc-messages" id="lc-messages"></div>
+
+  <div class="lc-quick" id="lc-quick">
+    <button class="lc-q-btn" onclick="sendLushioChat('Check product availability')">Check Availability</button>
+    <button class="lc-q-btn" onclick="sendLushioChat('What are your store policies and returns?')">Store Policies</button>
+    <button class="lc-q-btn" onclick="sendLushioChat('Tell me about Lushio collections')">Lushio Collections</button>
   </div>
 
-  <!-- Messages -->
-  <div class="messages" id="messages"></div>
-
-  <!-- Quick buttons -->
-  <div class="quick-btns" id="quick-btns">
-    <button class="q-btn" onclick="sendQuick('Check availability of products')">Check Availability</button>
-    <button class="q-btn" onclick="sendQuick('What are your store policies and returns?')">Store Policies</button>
-    <button class="q-btn" onclick="sendQuick('Tell me about Lushio collections')">Lushio Collections</button>
-  </div>
-
-  <!-- Input -->
-  <div class="input-wrap">
-    <input id="chat-input" type="text" placeholder="Ask me anything..." autocomplete="off" />
-    <button class="send-btn" id="send-btn" title="Send">&#10148;</button>
+  <div class="lc-input-wrap">
+    <input class="lc-input" id="lc-input" type="text" placeholder="Ask me anything..." autocomplete="off" />
+    <button class="lc-send" id="lc-send" aria-label="Send">Send &rarr;</button>
   </div>
 </div>
 
 <script>
-  // ── CONFIG ──
-  // Reads ?api= from URL so the parent page can pass the backend URL
-  const params = new URLSearchParams(window.location.search);
-  const API_URL = params.get('api') || 'https://lushio-ai.onrender.com/ask';
+const LUSHIO_API = 'https://lushio-ai.onrender.com/ask';
+const lcFab = document.getElementById('lc-fab');
+const lcFabLogo = document.getElementById('lc-fab-logo');
+const lcFabClose = document.getElementById('lc-fab-close');
+const lcPanel = document.getElementById('lc-panel');
+const lcMessages = document.getElementById('lc-messages');
+const lcInput = document.getElementById('lc-input');
+const lcSend = document.getElementById('lc-send');
+const lcGreeting = document.getElementById('lc-greeting');
+const lcQuick = document.getElementById('lc-quick');
 
-  const messagesEl  = document.getElementById('messages');
-  const inputEl     = document.getElementById('chat-input');
-  const sendBtnEl   = document.getElementById('send-btn');
-  const greetingEl  = document.getElementById('greeting');
-  const quickBtnsEl = document.getElementById('quick-btns');
+let lcOpen = false;
+let lcFirst = true;
 
-  let firstMessage = true;
-
-  function hideGreetingAndQuick() {
-    if (firstMessage) {
-      greetingEl.style.display  = 'none';
-      quickBtnsEl.style.display = 'none';
-      firstMessage = false;
-    }
+lcFab.addEventListener('click', () => {
+  lcOpen = !lcOpen;
+  if (lcOpen) {
+    lcFab.classList.add('lc-fab--open');
+    lcPanel.classList.add('lc-panel--open');
+    lcFabLogo.style.display = 'none';
+    lcFabClose.style.display = 'block';
+    lcPanel.setAttribute('aria-hidden', 'false');
+  } else {
+    lcFab.classList.remove('lc-fab--open');
+    lcPanel.classList.remove('lc-panel--open');
+    lcFabLogo.style.display = 'block';
+    lcFabClose.style.display = 'none';
+    lcPanel.setAttribute('aria-hidden', 'true');
   }
+});
 
-  function addMsg(text, role) {
-    const d = document.createElement('div');
-    d.className = `msg ${role}`;
-    d.textContent = text;
-    messagesEl.appendChild(d);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
-    return d;
+function addLcMsg(text, role) {
+  const d = document.createElement('div');
+  d.className = `lc-msg lc-msg--${role}`;
+  d.textContent = text;
+  lcMessages.appendChild(d);
+  lcMessages.scrollTop = lcMessages.scrollHeight;
+  return d;
+}
+
+function showLcTyping() {
+  const d = document.createElement('div');
+  d.className = 'lc-msg lc-msg--ai';
+  d.id = 'lc-typing';
+  d.innerHTML = '<span class="lc-dots"><span></span><span></span><span></span></span>';
+  lcMessages.appendChild(d);
+  lcMessages.scrollTop = lcMessages.scrollHeight;
+}
+
+function hideLcTyping() {
+  const t = document.getElementById('lc-typing');
+  if (t) t.remove();
+}
+
+async function sendLushioChat(query) {
+  if (!query.trim()) return;
+  if (lcFirst) {
+    lcGreeting.style.display = 'none';
+    lcQuick.style.display = 'none';
+    lcFirst = false;
   }
+  addLcMsg(query, 'user');
+  lcInput.value = '';
+  lcInput.disabled = true;
+  lcSend.disabled = true;
+  showLcTyping();
 
-  function addTyping() {
-    const d = document.createElement('div');
-    d.className = 'msg ai';
-    d.id = 'typing';
-    d.innerHTML = '<div class="typing"><span></span><span></span><span></span></div>';
-    messagesEl.appendChild(d);
-    messagesEl.scrollTop = messagesEl.scrollHeight;
+  try {
+    const res = await fetch(LUSHIO_API, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query })
+    });
+    hideLcTyping();
+    if (!res.ok) throw new Error();
+    const data = await res.json();
+    addLcMsg(data?.final_answer?.message || 'Got it!', 'ai');
+  } catch (err) {
+    hideLcTyping();
+    addLcMsg('⚠️ Unable to connect right now. Please try again shortly.', 'ai');
+  } finally {
+    lcInput.disabled = false;
+    lcSend.disabled = false;
+    lcInput.focus();
   }
+}
 
-  function removeTyping() {
-    const t = document.getElementById('typing');
-    if (t) t.remove();
-  }
-
-  async function sendMessage(query) {
-    if (!query.trim()) return;
-    hideGreetingAndQuick();
-
-    addMsg(query, 'user');
-    inputEl.value = '';
-    inputEl.disabled = true;
-    sendBtnEl.disabled = true;
-    addTyping();
-
-    try {
-      const res  = await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query })
-      });
-      removeTyping();
-      if (!res.ok) throw new Error('Server error ' + res.status);
-      const data = await res.json();
-      const answer = data?.final_answer?.message || 'Got it!';
-      addMsg(answer, 'ai');
-    } catch (err) {
-      removeTyping();
-      addMsg('⚠️ Unable to connect. Please try again shortly.', 'ai');
-    } finally {
-      inputEl.disabled = false;
-      sendBtnEl.disabled = false;
-      inputEl.focus();
-    }
-  }
-
-  function sendQuick(text) { sendMessage(text); }
-
-  sendBtnEl.addEventListener('click', () => sendMessage(inputEl.value));
-  inputEl.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(inputEl.value); });
+lcSend.addEventListener('click', () => sendLushioChat(lcInput.value));
+lcInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendLushioChat(lcInput.value); });
 </script>
 </body>
 </html>
