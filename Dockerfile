@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 # Set working directory
 WORKDIR /app
@@ -12,8 +12,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application files
 COPY . .
 
-# Expose port (Render/Heroku override this dynamically)
-EXPOSE 8000
+# Expose port (Render uses $PORT env var dynamically)
+EXPOSE 10000
 
-# Start FastAPI server
-CMD ["python", "-m", "uvicorn", "src.agent:app_instance", "--host", "0.0.0.0", "--port", "8000"]
+# Start FastAPI server using Render's $PORT
+CMD ["sh", "-c", "uvicorn src.agent:app_instance --host 0.0.0.0 --port ${PORT:-10000}"]

@@ -1,10 +1,12 @@
 langgraph
-openai
 langchain
+langchain-groq
+langchain-pinecone
+langchain-huggingface
+langchain-community
 fastapi
 uvicorn
 python-dotenv
 pinecone-client
-langchain-pinecone
 sentence-transformers
-langchain-huggingface
+mcp
