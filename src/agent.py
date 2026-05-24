@@ -1,6 +1,8 @@
 import json
 import time
 import logging
+import os
+import sys
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
@@ -11,12 +13,11 @@ from dotenv import load_dotenv
 
 from langchain_core.messages import HumanMessage, BaseMessage, AIMessage, SystemMessage
 from langchain_core.tools import tool
-from langchain_google_vertexai import ChatVertexAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_pinecone import PineconeVectorStore
-import os
 
 # Configure Logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s")
@@ -39,17 +40,14 @@ class FinalResponse(BaseModel):
     message: str = Field(description="A friendly, conversational summary of what is in stock or out of stock based on the user's query.")
     products: List[Dict[str, Any]] = Field(description="The exact list of product dictionaries found. E.g. [{'name': 'laptop', 'stock': 15, 'price': 999.99}]")
 
-# Initialize Gemini via Vertex AI (no API key needed - uses GCP service account)
-llm = ChatVertexAI(
-    model_name="gemini-1.5-flash",
+# Initialize Gemini via Google AI Studio API Key (passed dynamically or fallback)
+llm = ChatGoogleGenerativeAI(
+    model="gemini-1.5-flash",
     temperature=0.7,
-    project=os.getenv("GOOGLE_CLOUD_PROJECT", "project-23c368bd-b3eb-4717-816"),
-    location="us-central1",
+    google_api_key=os.getenv("GEMINI_API_KEY") or os.getenv("GOOGLE_API_KEY") or "AIzaSyDcDBFDKXvUidx8Nfr8s-gb8ijLhZEohmw",
 )
 
 from src.tools import check_inventory, search_documents
-import subprocess
-import sys
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
@@ -303,7 +301,7 @@ async def root():
             "ask": "/ask (POST)",
             "docs": "/docs (GET)"
         }
-    }
+      }
 
 @app_instance.post("/ask", response_model=QueryResponse)
 async def ask_agent(request: QueryRequest):
