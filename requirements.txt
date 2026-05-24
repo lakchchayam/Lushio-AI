@@ -1,6 +1,6 @@
 langgraph
 langchain
-langchain-groq
+langchain-google-vertexai
 langchain-pinecone
 langchain-huggingface
 langchain-community

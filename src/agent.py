@@ -11,7 +11,7 @@ from dotenv import load_dotenv
 
 from langchain_core.messages import HumanMessage, BaseMessage, AIMessage, SystemMessage
 from langchain_core.tools import tool
-from langchain_groq import ChatGroq
+from langchain_google_vertexai import ChatVertexAI
 from langgraph.graph import StateGraph, START, END
 from langgraph.graph.message import add_messages
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -39,10 +39,12 @@ class FinalResponse(BaseModel):
     message: str = Field(description="A friendly, conversational summary of what is in stock or out of stock based on the user's query.")
     products: List[Dict[str, Any]] = Field(description="The exact list of product dictionaries found. E.g. [{'name': 'laptop', 'stock': 15, 'price': 999.99}]")
 
-# Initialize the Groq model
-llm = ChatGroq(
+# Initialize Gemini via Vertex AI (no API key needed - uses GCP service account)
+llm = ChatVertexAI(
+    model_name="gemini-1.5-flash",
     temperature=0.7,
-    model_name="llama-3.1-8b-instant",
+    project=os.getenv("GOOGLE_CLOUD_PROJECT", "project-23c368bd-b3eb-4717-816"),
+    location="asia-south1",
 )
 
 from src.tools import check_inventory, search_documents
