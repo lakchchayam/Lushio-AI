@@ -1,0 +1,47 @@
+steps:
+  # Step 0: Build Docker image
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Build'
+    args:
+      - 'build'
+      - '--no-cache'
+      - '-t'
+      - 'asia-south1-docker.pkg.dev/$PROJECT_ID/lushio-ai/lushio-ai:$COMMIT_SHA'
+      - '-t'
+      - 'asia-south1-docker.pkg.dev/$PROJECT_ID/lushio-ai/lushio-ai:latest'
+      - '.'
+
+  # Step 1: Push image to Artifact Registry
+  - name: 'gcr.io/cloud-builders/docker'
+    id: 'Push'
+    args:
+      - 'push'
+      - '--all-tags'
+      - 'asia-south1-docker.pkg.dev/$PROJECT_ID/lushio-ai/lushio-ai'
+
+  # Step 2: Deploy to Cloud Run (use 'deploy' not 'services update')
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    id: 'Deploy'
+    entrypoint: 'gcloud'
+    args:
+      - 'run'
+      - 'deploy'
+      - 'lushio-ai'
+      - '--image=asia-south1-docker.pkg.dev/$PROJECT_ID/lushio-ai/lushio-ai:$COMMIT_SHA'
+      - '--region=asia-south1'
+      - '--platform=managed'
+      - '--allow-unauthenticated'
+      - '--port=8080'
+      - '--memory=1Gi'
+      - '--cpu=1'
+      - '--min-instances=0'
+      - '--max-instances=3'
+      - '--set-env-vars=PORT=8080'
+      - '--quiet'
+
+images:
+  - 'asia-south1-docker.pkg.dev/$PROJECT_ID/lushio-ai/lushio-ai:$COMMIT_SHA'
+  - 'asia-south1-docker.pkg.dev/$PROJECT_ID/lushio-ai/lushio-ai:latest'
+
+options:
+  logging: CLOUD_LOGGING_ONLY
