@@ -44,7 +44,7 @@ llm = ChatVertexAI(
     model_name="gemini-1.5-flash",
     temperature=0.7,
     project=os.getenv("GOOGLE_CLOUD_PROJECT", "project-23c368bd-b3eb-4717-816"),
-    location="asia-south1",
+    location="us-central1",
 )
 
 from src.tools import check_inventory, search_documents
