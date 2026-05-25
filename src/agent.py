@@ -25,9 +25,9 @@ load_dotenv()
 # ── LLM ──────────────────────────────────────────────────────────────────────
 # Using Llama 3.3 70B on Groq which is lightning-fast and has excellent tool accuracy
 llm = ChatGroq(
-    model="llama-3.3-70b-specdec",
+    model="llama-3.3-70b-versatile",
     temperature=0.7,
-    groq_api_key=os.getenv("GROQ_API_KEY") or "gsk_C0hO154m1c828hD34r93Bndz39d2h5816A9d28sB73f982a1s",  # Prioritizes dynamic env key
+    groq_api_key=os.getenv("GROQ_API_KEY"),  # Managed securely via Cloud Run environment variables
 )
 
 # ── State ─────────────────────────────────────────────────────────────────────
