@@ -13,7 +13,7 @@ from dotenv import load_dotenv
 
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 from langchain_core.tools import tool
-from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_groq import ChatGroq
 from langgraph.graph import StateGraph, START, END
 
 # Configure Logging
@@ -23,10 +23,11 @@ logger = logging.getLogger("LushioAgent")
 load_dotenv()
 
 # ── LLM ──────────────────────────────────────────────────────────────────────
-llm = ChatGoogleGenerativeAI(
-    model="gemini-1.5-flash-latest",
+# Using Llama 3.3 70B on Groq which is lightning-fast and has excellent tool accuracy
+llm = ChatGroq(
+    model="llama-3.3-70b-specdec",
     temperature=0.7,
-    google_api_key=os.getenv("GEMINI_API_KEY") or "AIzaSyDcDBFDKXvUidx8Nfr8s-gb8ijLhZEohmw",
+    groq_api_key=os.getenv("GROQ_API_KEY") or "gsk_C0hO154m1c828hD34r93Bndz39d2h5816A9d28sB73f982a1s",  # Prioritizes dynamic env key
 )
 
 # ── State ─────────────────────────────────────────────────────────────────────
